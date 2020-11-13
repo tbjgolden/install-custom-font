@@ -72,7 +72,9 @@ const getExternal = (bundleType) => {
 const isProduction = (bundleType) => bundleType.endsWith('_PROD')
 
 const getPlugins = (bundleType) => [
-  nodeResolve(),
+  nodeResolve({
+    preferBuiltins: true
+  }),
   commonjs({
     include: 'node_modules/**'
   }),

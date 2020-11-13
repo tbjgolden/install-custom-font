@@ -1,15 +1,23 @@
-import fs from 'fs-extra'
+import fs from 'fs/promises'
 import path from 'path'
 import os from 'os'
 import { fromFile } from 'file-type'
 import isRoot from 'is-root'
 import { getDestDir, installFont, installFontsFromDir } from './index'
 
+const removeIfThere = async (filePath: string) => {
+  try {
+    await fs.unlink(filePath)
+  } catch (err) {
+    //
+  }
+}
+
 describe('converts fonts correctly and moves to destDir', () => {
   it('installs otf font from path, locally', async () => {
     const expectedOutFile = `${getDestDir(false, 'otf')}/Inter Black.otf`
 
-    await fs.remove(expectedOutFile)
+    await removeIfThere(expectedOutFile)
     await installFont('fixtures/Inter/Inter Desktop/Inter-Black.otf')
 
     expect(
@@ -28,7 +36,7 @@ describe('converts fonts correctly and moves to destDir', () => {
 
   it('installs ttf font from path, locally', async () => {
     const expectedOutFile = `${getDestDir(false, 'ttf')}/Inter Italic.ttf`
-    await fs.remove(expectedOutFile)
+    await removeIfThere(expectedOutFile)
     await installFont(
       'fixtures/Inter/Inter Hinted for Windows/Desktop/Inter-Italic.ttf'
     )
@@ -49,7 +57,7 @@ describe('converts fonts correctly and moves to destDir', () => {
 
   it('installs woff font from path, locally', async () => {
     const expectedOutFile = `${getDestDir(false, 'woff')}/Inter Bold.ttf`
-    await fs.remove(expectedOutFile)
+    await removeIfThere(expectedOutFile)
     await installFont('fixtures/Inter/Inter Web/Inter-Bold.woff')
 
     expect(
@@ -66,7 +74,7 @@ describe('converts fonts correctly and moves to destDir', () => {
   it('installs woff2 font from path, locally', async () => {
     const expectedOutFile = `${getDestDir(false, 'woff2')}/Inter Medium.ttf`
 
-    await fs.remove(expectedOutFile)
+    await removeIfThere(expectedOutFile)
     await installFont('fixtures/Inter/Inter Web/Inter-Medium.woff2')
 
     expect(
@@ -85,8 +93,8 @@ describe('converts fonts correctly and moves to destDir', () => {
 
   it('installs same otf and ttf font globally on Linux, leading to a clash', async () => {
     if (os.platform() === 'linux' && isRoot()) {
-      await fs.remove(`${getDestDir(true, 'otf')}/Inter Regular.otf`)
-      await fs.remove(`${getDestDir(true, 'ttf')}/Inter Regular.ttf`)
+      await removeIfThere(`${getDestDir(true, 'otf')}/Inter Regular.otf`)
+      await removeIfThere(`${getDestDir(true, 'ttf')}/Inter Regular.ttf`)
       expect(
         (
           await installFont(

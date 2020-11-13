@@ -1,4 +1,6 @@
-import fs from 'fs-extra'
+import fs from 'fs/promises'
+import mkdirp from 'mkdirp'
+import rimraf from 'rimraf'
 import path from 'path'
 import os from 'os'
 import fontkit from 'fontkit'
@@ -24,6 +26,24 @@ type Result = {
   result: 'was_added' | 'already_added' | 'error'
   path: string | null
   error: string | null
+}
+
+const pathIsFile = async (filePath: string): Promise<boolean> => {
+  try {
+    const stats = await fs.stat(filePath)
+    return stats.isFile()
+  } catch (e) {
+    return false
+  }
+}
+
+const pathIsDir = async (filePath: string): Promise<boolean> => {
+  try {
+    const stats = await fs.stat(filePath)
+    return stats.isDirectory()
+  } catch (e) {
+    return false
+  }
 }
 
 export const getDestDir = (
@@ -70,7 +90,7 @@ export const installFont = async (
 
   try {
     // check if filepath exists
-    if ((await fs.pathExists(fullPath)) && (await fs.stat(fullPath)).isFile()) {
+    if (await pathIsFile(fullPath)) {
       const fontFormat = await fromFile(fullPath)
       if (fontFormat?.ext) {
         const fontData = fontkit.openSync(fullPath)
@@ -79,13 +99,13 @@ export const installFont = async (
         // check if it's already installed :)
         const destDir = getDestDir(cfg.global, ext)
 
-        await fs.mkdirp(destDir)
+        mkdirp.sync(destDir)
         const finalFilePath = path.join(
           destDir,
           `${fontData.fullName}.${ext === 'otf' ? 'otf' : 'ttf'}`
         )
 
-        if (fs.existsSync(finalFilePath)) {
+        if (await pathIsFile(finalFilePath)) {
           return {
             result: 'already_added',
             path: finalFilePath,
@@ -94,7 +114,7 @@ export const installFont = async (
         } else if (
           os.platform() === 'linux' &&
           cfg.global &&
-          fs.existsSync(
+          pathIsFile(
             `/usr/share/fonts/${ext === 'otf' ? 'truetype' : 'opentype'}/${
               fontData.fullName
             }.${ext === 'otf' ? 'ttf' : 'otf'}`
@@ -110,8 +130,8 @@ export const installFont = async (
             } font`
           }
         } else if (ext === 'ttf' || ext === 'otf') {
-          await fs.remove(finalFilePath)
-          await fs.copy(fullPath, finalFilePath)
+          rimraf.sync(finalFilePath)
+          await fs.copyFile(fullPath, finalFilePath)
           return {
             result: 'was_added',
             path: finalFilePath,
@@ -149,18 +169,19 @@ export const installFont = async (
               tmpobj.name,
               `${fontData.fullName}.ttf`
             )
-            await fs.remove(startFilePath)
-            await fs.remove(endFilePath)
+            rimraf.sync(startFilePath)
+            rimraf.sync(endFilePath)
 
             // copy source to tmp
-            await fs.copy(fullPath, startFilePath)
+            await fs.copyFile(fullPath, startFilePath)
 
             // convert to ttf in tmp
             execSync(`woff2_decompress '${startFilePath}'`)
 
             // copy to dest
-            await fs.remove(finalFilePath)
-            await fs.move(endFilePath, finalFilePath)
+            rimraf.sync(finalFilePath)
+            await fs.writeFile(finalFilePath, await fs.readFile(endFilePath))
+            await fs.unlink(endFilePath)
 
             return {
               result: 'was_added',
@@ -222,21 +243,11 @@ export const installFontsFromDir = async (
 
   const fullDirPath = path.resolve(process.cwd(), dirPath)
 
-  const isValidDir =
-    (await fs.pathExists(fullDirPath)) &&
-    (await fs.stat(fullDirPath)).isDirectory()
-
-  if (!isValidDir) {
+  if (!pathIsDir(fullDirPath)) {
     throw new Error(`Input dirPath does not exist, or is not a directory`)
   }
 
-  const fontMap = new Map<
-    string,
-    {
-      path: string
-      ext: ValidFontExt
-    }
-  >()
+  const fontMap = new Map<string, { path: string; ext: ValidFontExt }>()
 
   for await (const p of walk(fullDirPath)) {
     const fileType = await fromFile(p)
