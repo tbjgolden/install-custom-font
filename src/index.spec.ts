@@ -3,7 +3,7 @@ import path from 'path'
 import os from 'os'
 import { fromFile } from 'file-type'
 import isRoot from 'is-root'
-import { getDestDir, installFont } from './index'
+import { getDestDir, installFont, installFontsFromDir } from './index'
 
 describe('converts fonts correctly and moves to destDir', () => {
   it('installs otf font from path, locally', async () => {
@@ -65,6 +65,7 @@ describe('converts fonts correctly and moves to destDir', () => {
 
   it('installs woff2 font from path, locally', async () => {
     const expectedOutFile = `${getDestDir(false, 'woff2')}/Inter Medium.ttf`
+
     await fs.remove(expectedOutFile)
     await installFont('fixtures/Inter/Inter Web/Inter-Medium.woff2')
 
@@ -103,7 +104,57 @@ describe('converts fonts correctly and moves to destDir', () => {
       ).toBe('already_added')
     }
   })
+})
 
+describe('finds font files correctly', () => {
+  it('scans a directory of font files and chooses the right ones', async () => {
+    const mock = jest.fn()
+    console.log = mock
+
+    const results = await installFontsFromDir('fixtures/Inter')
+    const allFonts = results.map((result) => result.fontName).sort()
+
+    const installedFonts = [
+      'Inter',
+      'Inter Black',
+      'Inter Black Italic',
+      'Inter Bold',
+      'Inter Bold Italic',
+      'Inter Extra Bold',
+      'Inter Extra Bold Italic',
+      'Inter Extra Light',
+      'Inter Extra Light Italic',
+      'Inter Italic',
+      'Inter Light',
+      'Inter Light Italic',
+      'Inter Medium',
+      'Inter Medium Italic',
+      'Inter Regular',
+      'Inter Semi Bold',
+      'Inter Semi Bold Italic',
+      'Inter Thin',
+      'Inter Thin Italic',
+      'Inter V'
+    ]
+
+    expect(allFonts).toEqual(installedFonts)
+    expect(results.every((result) => result.result !== 'error')).toBe(true)
+    const allOutput = mock.mock.calls.join('\n')
+    for (const installedFont of installedFonts) {
+      expect(allOutput).toMatch(`  ${installedFont}`)
+    }
+
+    const fontCacheMessage =
+      'You may need to clear the font cache, or restart to see the changes.'
+    if (isRoot()) {
+      expect(allOutput).not.toMatch(fontCacheMessage)
+    } else {
+      expect(allOutput).toMatch(fontCacheMessage)
+    }
+  })
+})
+
+describe('getDestDir()', () => {
   it('matches the platform and filetype to the right fonts directory', async () => {
     const homeDir = os.homedir()
     expect(getDestDir(true, 'ttf', 'linux')).toBe('/usr/share/fonts/truetype')

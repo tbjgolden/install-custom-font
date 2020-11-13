@@ -4,6 +4,7 @@
     "allowSyntheticDefaultImports": true,
     "declaration": true,
     "declarationDir": "dist",
+    "downlevelIteration": true,
     "esModuleInterop": true,
     "importHelpers": true,
     "jsx": "react",

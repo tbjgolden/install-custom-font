@@ -5,17 +5,19 @@ import fontkit from 'fontkit'
 import { fromFile } from 'file-type'
 import { toSfnt } from 'woff-tools'
 import { exec, execSync } from 'child_process'
+import tmp from 'tmp'
+import isRoot from 'is-root'
+
+type ValidFontExt = 'ttf' | 'otf' | 'woff' | 'woff2'
 
 type Config = {
   global: boolean
-  interactive: boolean
-  convert: boolean
+  preferenceOrder: [ValidFontExt, ValidFontExt, ValidFontExt, ValidFontExt]
 }
 
 const defaultConfig: Config = {
   global: false,
-  interactive: false,
-  convert: true
+  preferenceOrder: ['ttf', 'otf', 'woff', 'woff2']
 }
 
 type Result = {
@@ -46,6 +48,16 @@ export const getDestDir = (
   return destDir
 }
 
+export const clearFontCache = (platform = os.platform()): void => {
+  if (platform === 'darwin') {
+    execSync(`sudo atsutil databases -remove`)
+    execSync(`atsutil server -shutdown`)
+    execSync(`atsutil server -ping`)
+  } else {
+    execSync(`sudo fc-cache -f -v`)
+  }
+}
+
 // inspect font metadata and nest every font by its name
 export const installFont = async (
   filePath: string,
@@ -53,7 +65,6 @@ export const installFont = async (
 ): Promise<Result> => {
   // merge configs
   const cfg: Config = { ...defaultConfig, ...config }
-  if (Math.random() > 10) console.log(cfg)
 
   const fullPath = path.resolve(process.cwd(), filePath)
 
@@ -115,6 +126,7 @@ export const installFont = async (
           }
         } else if (ext === 'woff2') {
           // relies on woff2_decompress being installed
+
           const isInstalled = await new Promise((resolve) => {
             exec(`woff2_decompress`, (_0, _1, stderr) => {
               if (`${stderr}`.includes('One argument')) {
@@ -126,13 +138,15 @@ export const installFont = async (
           })
 
           if (isInstalled) {
+            const tmpobj = tmp.dirSync()
+
             // remove clash names from tmp
             const startFilePath = path.join(
-              os.tmpdir(),
+              tmpobj.name,
               `${fontData.fullName}.woff2`
             )
             const endFilePath = path.join(
-              os.tmpdir(),
+              tmpobj.name,
               `${fontData.fullName}.ttf`
             )
             await fs.remove(startFilePath)
@@ -191,21 +205,114 @@ export const installFont = async (
   }
 }
 
-/*
+async function* walk(dir: string): AsyncGenerator<string> {
+  for await (const d of await fs.opendir(dir)) {
+    const entry = path.join(dir, d.name)
+    if (d.isDirectory()) yield* await walk(entry)
+    else if (d.isFile()) yield entry
+  }
+}
+
 export const installFontsFromDir = async (
   dirPath: string,
   config?: Partial<Config>
 ) => {
-  const existyBoi = await fs.pathExists(dirPath)
-  console.log(existyBoi)
   // merge configs
-  // check if filepath exists
-  // search dir for different font types
-  // if the dirpath contains multiple file types
-  //   if interactive, ask what to do
-  //   else keep only the ttfs (or otfs if no ttfs)
-  // else convert if necessary
-  // create custom fonts dir if necessary
-  //
+  const cfg: Config = { ...defaultConfig, ...config }
+
+  const fullDirPath = path.resolve(process.cwd(), dirPath)
+
+  const isValidDir =
+    (await fs.pathExists(fullDirPath)) &&
+    (await fs.stat(fullDirPath)).isDirectory()
+
+  if (!isValidDir) {
+    throw new Error(`Input dirPath does not exist, or is not a directory`)
+  }
+
+  const fontMap = new Map<
+    string,
+    {
+      path: string
+      ext: ValidFontExt
+    }
+  >()
+
+  for await (const p of walk(fullDirPath)) {
+    const fileType = await fromFile(p)
+    if (fileType?.ext) {
+      const ext = fileType.ext
+      if (ext === 'ttf' || ext === 'otf' || ext === 'woff' || ext === 'woff2') {
+        const fontData = fontkit.openSync(p)
+        const prevMatchingFont = fontMap.get(fontData.fullName)
+        if (
+          !prevMatchingFont ||
+          cfg.preferenceOrder.indexOf(ext) <
+            cfg.preferenceOrder.indexOf(prevMatchingFont.ext)
+        ) {
+          fontMap.set(fontData.fullName, {
+            path: p,
+            ext
+          })
+        }
+      }
+    }
+  }
+
+  return Promise.all(
+    [...fontMap.entries()].map((entry) => {
+      const fontName = entry[0] as string
+      const { path } = entry[1] as { path: string; ext: ValidFontExt }
+
+      return installFont(path, cfg).then((result) => ({
+        ...result,
+        fontName
+      }))
+    })
+  ).then(async (results) => {
+    const fontsInstalled = []
+    const fontsAlreadyInstalled = []
+    for (const result of results) {
+      if (result.result === 'error') {
+        console.warn(
+          `'${result.fontName}' was not installed:\n  ${result.error}`
+        )
+      } else if (result.result === 'was_added') {
+        fontsInstalled.push(result.fontName)
+      } else {
+        fontsAlreadyInstalled.push(result.fontName)
+      }
+    }
+
+    if (fontsInstalled.length > 0) {
+      console.log(
+        `Fonts installed:\n${fontsInstalled
+          .sort()
+          .map((f) => `  ${f}`)
+          .join('\n')}`
+      )
+    }
+    if (fontsAlreadyInstalled.length > 0) {
+      console.log(
+        `Fonts encountered that were previously installed:\n${fontsAlreadyInstalled
+          .sort()
+          .map((f) => `  ${f}`)
+          .join('\n')}`
+      )
+    }
+
+    if (isRoot()) {
+      try {
+        clearFontCache()
+      } catch (e) {
+        console.error('Encountered error when trying to clear the font cache.')
+        console.error(e)
+      }
+    } else {
+      console.log(
+        'You may need to clear the font cache, or restart to see the changes.'
+      )
+    }
+    return results
+  })
 }
-*/
