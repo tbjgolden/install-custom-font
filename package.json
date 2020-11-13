@@ -5,10 +5,6 @@
   "main": "dist/index.js",
   "module": "dist/install-custom-font.esm.js",
   "jsnext:main": "dist/install-custom-font.esm.js",
-  "browser": {
-    "./dist/index.js": "./dist/index.js",
-    "./dist/install-custom-font.esm.js": "./dist/install-custom-font.esm.js"
-  },
   "typings": "dist/index.d.ts",
   "files": [
     "dist"
@@ -28,7 +24,6 @@
     "postinstall": "npx patch-package",
     "postbundle": "del compiled && cp-cli ./index.js ./dist/index.js",
     "start": "run-p start:*",
-    "start:storybook": "node scripts/startStorybook.js",
     "start:tdd": "node scripts/startTDD.js && yarn test:src --watch",
     "test": "run-s check:* lint build test:* && node scripts/jest/generateShield.js",
     "test:cjs": "jest --config ./scripts/jest/config.cjs.js",
@@ -37,7 +32,6 @@
     "test:src": "jest --config ./scripts/jest/config.src.js",
     "test:umd": "jest --config ./scripts/jest/config.umd.js",
     "test:umdprod": "jest --config ./scripts/jest/config.umdprod.js",
-    "typedoc": "typedoc --mode file --out website/static/api --theme minimal --readme none src/index.ts",
     "semantic-release": "semantic-release"
   },
   "husky": {
@@ -58,12 +52,13 @@
     "url": "github:tbjgolden/install-custom-font/issues"
   },
   "homepage": "github:tbjgolden/install-custom-font",
-  "peerDependencies": {
-    "react": "^16.0.0",
-    "react-dom": "^16.0.0"
-  },
+  "peerDependencies": {},
   "dependencies": {
-    "@babel/runtime": "^7.7.7"
+    "@babel/runtime": "^7.7.7",
+    "file-type": "^16.0.1",
+    "fontkit": "^1.8.1",
+    "is-root": "^2.1.0",
+    "woff-tools": "^0.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.9.6",
@@ -78,7 +73,10 @@
     "@storybook/react": "^5.3.19",
     "@testing-library/jest-dom": "^5.8.0",
     "@testing-library/react": "^10.0.4",
+    "@types/fontkit": "^1.8.0",
+    "@types/fs-extra": "^9.0.4",
     "@types/jest": "25.2.3",
+    "@types/mock-fs": "^4.13.0",
     "@types/react": "16.9.35",
     "@types/react-dom": "16.9.8",
     "@types/testing-library__react": "^10.0.1",
@@ -99,14 +97,13 @@
     "eslint-plugin-react-hooks": "4.0.2",
     "fast-glob": "^3.2.2",
     "fork-ts-checker-webpack-plugin": "^4.1.4",
-    "fs-extra": "^9.0.0",
+    "fs-extra": "^9.0.1",
     "husky": "^4.2.5",
     "jest": "26.0.1",
+    "mock-fs": "^4.13.0",
     "npm-run-all": "4.1.5",
     "patch-package": "^6.2.2",
     "prettier": "2.0.5",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1",
     "react-test-renderer": "16.13.1",
     "regenerator-runtime": "0.13.5",
     "rollup": "2.10.9",
