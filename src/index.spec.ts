@@ -1,9 +1,11 @@
-import fs from 'fs/promises'
+import rawfs from 'fs'
 import path from 'path'
 import os from 'os'
 import { fromFile } from 'file-type'
 import isRoot from 'is-root'
 import { getDestDir, installFont, installFontsFromDir } from './index'
+
+const fs = rawfs.promises
 
 const removeIfThere = async (filePath: string) => {
   try {

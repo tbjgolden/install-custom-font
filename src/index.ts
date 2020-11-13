@@ -1,4 +1,4 @@
-import fs from 'fs/promises'
+import rawfs from 'fs'
 import mkdirp from 'mkdirp'
 import rimraf from 'rimraf'
 import path from 'path'
@@ -9,6 +9,8 @@ import { toSfnt } from 'woff-tools'
 import { exec, execSync } from 'child_process'
 import tmp from 'tmp'
 import isRoot from 'is-root'
+
+const fs = rawfs.promises
 
 type ValidFontExt = 'ttf' | 'otf' | 'woff' | 'woff2'
 
