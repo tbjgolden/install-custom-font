@@ -33,6 +33,32 @@ Promise.all([
 });
 ```
 
+### `installFont(pathToFont, [opts])`
+
+### `installFontsFromDir(pathToDirContainingFonts, [opts])`
+
+#### Options
+
+```js
+const defaultConfig: Config = {
+  // whether fonts should be installed globally or in the local directory
+  global: false,
+  // fast mode will skip scanning files for their file type, instead just using the file extension
+  // it is disabled by default as the actual time cost seems very small
+  fast: false,
+  // if interactive, the cache will be cleared after installFontsFromDir automatically
+  // this will ask the user for sudo privileges if required
+  interactive: true,
+  // highest priority at the start, lowest priority at the end:
+  // * if you'd like to avoid importing a certain file type, omit it from this array
+  // * if you're installing from a directory, this priority is used to determine
+  //   which source file is used when two files refer to the same font
+  // * by default, if a ttf font and a woff font have the same font family and style,
+  //   the ttf will be used instead of the converted woff
+  preferenceOrder: ['ttf', 'otf', 'woff', 'woff2']
+}
+```
+
 ## Installation
 
 ```
