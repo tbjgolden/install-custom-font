@@ -3,44 +3,58 @@
 [![npm version](https://img.shields.io/npm/v/install-custom-font.svg?style=flat-square)](https://www.npmjs.com/package/install-custom-font)
 [![npm downloads](https://img.shields.io/npm/dm/install-custom-font.svg?style=flat-square)](https://www.npmjs.com/package/install-custom-font)
 
+> Install fonts programmatically on MacOS and Linux
+
 ## Basic Usage
 
 ```jsx
-const { installFont, installFontsFromDir, clearCache } = require('install-custom-font');
+const {
+  installFont,
+  installFontsFromDir,
+  clearCache
+} = require('install-custom-font')
 
-Promise.all([
-  installFont('~/Downloads/FONT.ttf'),
-  installFont('~/Downloads/someother.otf'),
-  installFont('~/Downloads/someweb.woff'),
-  installFont('~/Downloads/someweeb.woff2')
-]).then((results) => {
-  console.log(results[0]); // { result: "was_added", ... }
-  return installFont('~/Downloads/FONT.ttf'),
-}).then((result) => {
-  console.log(result); // { result: "already_added", ... }
-  return installFont('~/Downloads/background.jpg')
-}).then((result) => {
-  console.log(result);
-  // { result: "error", error: "Can only install ttf, otf, woff and woff2 fonts", ... }
+;(async () => {
+  const results = await Promise.all([
+    installFont('~/Downloads/FONT.ttf'),
+    installFont('~/Downloads/someother.otf'),
+    installFont('~/Downloads/someweb.woff'),
+    installFont('~/Downloads/someweeb.woff2')
+  ])
+  console.log(results[0]) // { result: "was_added", ... }
 
-  // clearCache will attempt to clear the font cache immediately, so you can see the
-  // changes without having to log out or reboot
-  return clearCache();
-}).then(() => {
-  // install all the fonts contained in a directory (does a recursive search for files within)
-  // Note: you don't need to call clearCache after this function, as it does it for you
-  return installFontsFromDir('~/Downloads/ComicSansMT/')
-});
+  // [2] when font is already installed, the result will show that
+  await installFont('~/Downloads/FONT.ttf').then((result) => {
+    console.log(result) // { result: "already_added", ... }
+  })
+
+  // [3] on errors, the result will be an error and a message explaining
+  await installFont('~/Downloads/background.jpg').then((result) => {
+    console.log(result)
+    // { result: "error", error: "Can only install ttf, otf, woff and woff2 fonts", ... }
+  })
+
+  // clear the font cache so a reboot is not needed
+  await clearCache()
+
+  // [4] alternatively, a high-level function installFontsFromDir
+  //     can be used, which installs all the fonts contained in a directory
+  //     (does a recursive search for files within)
+
+  // Note: clearCache is automatically called after this function, unless `interactive: false`
+  // is added as an option
+  await installFontsFromDir('~/Downloads/ComicSansMT/')
+})()
 ```
 
-### `installFont(pathToFont, [opts])`
+### `installFont(pathToFont[, opts])`
 
-### `installFontsFromDir(pathToDirContainingFonts, [opts])`
+### `installFontsFromDir(pathToDirContainingFonts[, opts])`
 
 #### Options
 
 ```js
-const defaultConfig: Config = {
+defaults: {
   // whether fonts should be installed globally or in the local directory
   global: false,
   // fast mode will skip scanning files for their file type, instead just using the file extension

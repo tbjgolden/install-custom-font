@@ -1,7 +1,7 @@
 {
   "name": "install-custom-font",
   "version": "0.0.0-semantically-released",
-  "description": "Use an npm package to install custom fonts in a cross-platform way",
+  "description": "Install fonts programmatically on MacOS and Linux",
   "main": "dist/index.js",
   "module": "dist/install-custom-font.esm.js",
   "jsnext:main": "dist/install-custom-font.esm.js",
