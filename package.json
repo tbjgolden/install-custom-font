@@ -57,7 +57,6 @@
     "@babel/runtime": "^7.7.7",
     "file-type": "^16.0.1",
     "fontkit": "^1.8.1",
-    "is-root": "^2.1.0",
     "mkdirp": "^1.0.4",
     "rimraf": "^3.0.2",
     "tmp": "^0.2.1",

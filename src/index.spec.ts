@@ -121,7 +121,9 @@ describe('finds font files correctly', () => {
     const mock = jest.fn()
     console.log = mock
 
-    const results = await installFontsFromDir('fixtures/Inter')
+    const results = await installFontsFromDir('fixtures/Inter', {
+      interactive: false
+    })
     const allFonts = results.map((result) => result.fontName).sort()
 
     const installedFonts = [
@@ -153,14 +155,28 @@ describe('finds font files correctly', () => {
     for (const installedFont of installedFonts) {
       expect(allOutput).toMatch(`  ${installedFont}`)
     }
+  })
 
-    const fontCacheMessage =
-      'You may need to clear the font cache, or restart to see the changes.'
-    if (isRoot()) {
-      expect(allOutput).not.toMatch(fontCacheMessage)
-    } else {
-      expect(allOutput).toMatch(fontCacheMessage)
-    }
+  it('has a fast mode which is actually faster', async () => {
+    const mock = jest.fn()
+    console.log = mock
+
+    const normalStartTime = Date.now()
+    const normalResults = await installFontsFromDir('fixtures/Inter', {
+      interactive: false,
+      fast: false
+    })
+    const normalDuration = Date.now() - normalStartTime
+
+    const fastStartTime = Date.now()
+    const fastResults = await installFontsFromDir('fixtures/Inter', {
+      interactive: false,
+      fast: true
+    })
+    const fastDuration = Date.now() - fastStartTime
+
+    expect(fastResults).toEqual(normalResults)
+    expect(fastDuration).toBeLessThanOrEqual(normalDuration)
   })
 })
 

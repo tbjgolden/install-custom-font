@@ -2,48 +2,42 @@
 
 [![npm version](https://img.shields.io/npm/v/install-custom-font.svg?style=flat-square)](https://www.npmjs.com/package/install-custom-font)
 [![npm downloads](https://img.shields.io/npm/dm/install-custom-font.svg?style=flat-square)](https://www.npmjs.com/package/install-custom-font)
-![coverage](/scripts/jest/shield.svg)
-
->
 
 ## Basic Usage
 
 ```jsx
-import React from 'react'
-import { render } from 'react-dom'
+const { installFont, installFontsFromDir, clearCache } = require('install-custom-font');
 
-render(, document.getElementById('root'))
+Promise.all([
+  installFont('~/Downloads/FONT.ttf'),
+  installFont('~/Downloads/someother.otf'),
+  installFont('~/Downloads/someweb.woff'),
+  installFont('~/Downloads/someweeb.woff2')
+]).then((results) => {
+  console.log(results[0]); // { result: "was_added", ... }
+  return installFont('~/Downloads/FONT.ttf'),
+}).then((result) => {
+  console.log(result); // { result: "already_added", ... }
+  return installFont('~/Downloads/background.jpg')
+}).then((result) => {
+  console.log(result);
+  // { result: "error", error: "Can only install ttf, otf, woff and woff2 fonts", ... }
+
+  // clearCache will attempt to clear the font cache immediately, so you can see the
+  // changes without having to log out or reboot
+  return clearCache();
+}).then(() => {
+  // install all the fonts contained in a directory (does a recursive search for files within)
+  // Note: you don't need to call clearCache after this function, as it does it for you
+  return installFontsFromDir('~/Downloads/ComicSansMT/')
+});
 ```
 
 ## Installation
 
 ```
-$ npm install install-custom-font --save
+npm install install-custom-font
 ```
-
-There are also UMD builds available via [unpkg](https://unpkg.com/):
-
-- https://unpkg.com/install-custom-font/dist/install-custom-font.umd.development.js
-- https://unpkg.com/install-custom-font/dist/install-custom-font.umd.production.js
-
-For the non-minified development version, make sure you have already included:
-
-- [`React`](https://unpkg.com/react/umd/react.development.js)
-- [`ReactDOM`](https://unpkg.com/react-dom/umd/react-dom.development.js)
-- [`PropTypes`](https://unpkg.com/prop-types/prop-types.js)
-
-For the minified production version, make sure you have already included:
-
-- [`React`](https://unpkg.com/react/umd/react.production.min.js)
-- [`ReactDOM`](https://unpkg.com/react-dom/umd/react-dom.production.min.js)
-
-## [`Docs`](https://tbjgolden.github.io/install-custom-font/docs)
-
-## [`API`](https://tbjgolden.github.io/install-custom-font/docs/api)
-
-## Live Examples
-
-- [Basic Usage](https://github.com/tbjgolden/install-custom-font/tree/master/examples/basic-usage)
 
 ## License
 
