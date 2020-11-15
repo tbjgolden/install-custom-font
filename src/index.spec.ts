@@ -127,33 +127,33 @@ describe('finds font files correctly', () => {
     const allFonts = results.map((result) => result.fontName).sort()
 
     const installedFonts = [
-      'Inter',
-      'Inter Black',
       'Inter Black Italic',
+      'Inter Black Regular',
       'Inter Bold',
       'Inter Bold Italic',
-      'Inter Extra Bold',
       'Inter Extra Bold Italic',
-      'Inter Extra Light',
+      'Inter Extra Bold Regular',
       'Inter Extra Light Italic',
+      'Inter Extra Light Regular',
       'Inter Italic',
-      'Inter Light',
       'Inter Light Italic',
-      'Inter Medium',
+      'Inter Light Regular',
       'Inter Medium Italic',
+      'Inter Medium Regular',
       'Inter Regular',
-      'Inter Semi Bold',
+      'Inter Regular',
       'Inter Semi Bold Italic',
-      'Inter Thin',
+      'Inter Semi Bold Regular',
       'Inter Thin Italic',
-      'Inter V'
+      'Inter Thin Regular',
+      'Inter V Regular'
     ]
 
     expect(allFonts).toEqual(installedFonts)
     expect(results.every((result) => result.result !== 'error')).toBe(true)
     const allOutput = mock.mock.calls.join('\n')
-    for (const installedFont of installedFonts) {
-      expect(allOutput).toMatch(`  ${installedFont}`)
+    for (const font of installedFonts) {
+      expect(allOutput).toMatch(`  ${font}`)
     }
   })
 

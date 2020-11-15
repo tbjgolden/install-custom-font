@@ -3,7 +3,7 @@ import mkdirp from 'mkdirp'
 import rimraf from 'rimraf'
 import path from 'path'
 import os from 'os'
-import fontkit from 'fontkit'
+import fontkit, { Font } from 'fontkit'
 import { fromFile } from 'file-type'
 import { toSfnt } from 'woff-tools'
 import { exec, execSync } from 'child_process'
@@ -31,6 +31,7 @@ type Result = {
   result: 'was_added' | 'already_added' | 'error'
   path: string | null
   error: string | null
+  fontName: string | null
 }
 
 const pathIsFile = async (filePath: string): Promise<boolean> => {
@@ -86,11 +87,11 @@ export const clearFontCache = async (
   platform = os.platform()
 ): Promise<boolean> => {
   if (platform === 'darwin') {
-    console.log(await asyncExec(`sudo atsutil databases -remove`))
-    console.log(await asyncExec(`atsutil server -shutdown`))
-    console.log(await asyncExec(`atsutil server -ping`))
+    await asyncExec(`sudo atsutil databases -remove`)
+    await asyncExec(`atsutil server -shutdown`)
+    await asyncExec(`atsutil server -ping`)
   } else {
-    console.log(await asyncExec(`sudo fc-cache -f -v`))
+    await asyncExec(`sudo fc-cache -f -v`)
   }
   return true
 }
@@ -132,6 +133,7 @@ export const installFont = async (
             return {
               result: 'already_added',
               path: finalFilePath,
+              fontName: fontData.fullName,
               error: `The font '${fontData.fullName}' is already installed`
             }
           } else if (
@@ -146,6 +148,7 @@ export const installFont = async (
             return {
               result: 'already_added',
               path: finalFilePath,
+              fontName: fontData.fullName,
               error: `The font '${
                 fontData.fullName
               }' is already installed as an ${
@@ -158,6 +161,7 @@ export const installFont = async (
             return {
               result: 'was_added',
               path: finalFilePath,
+              fontName: fontData.fullName,
               error: null
             }
           } else if (ext === 'woff') {
@@ -168,6 +172,7 @@ export const installFont = async (
             return {
               result: 'was_added',
               path: finalFilePath,
+              fontName: fontData.fullName,
               error: null
             }
           } else if (ext === 'woff2') {
@@ -212,12 +217,14 @@ export const installFont = async (
               return {
                 result: 'was_added',
                 path: finalFilePath,
+                fontName: fontData.fullName,
                 error: null
               }
             } else {
               return {
                 result: 'error',
                 path: finalFilePath,
+                fontName: fontData.fullName,
                 error: 'woff2 needs to be installed to convert woff2 font files'
               }
             }
@@ -225,6 +232,7 @@ export const installFont = async (
             return {
               result: 'error',
               path: finalFilePath,
+              fontName: fontData.fullName,
               error: 'Unsupported input font file format'
             }
           }
@@ -232,6 +240,7 @@ export const installFont = async (
           return {
             result: 'error',
             path: null,
+            fontName: null,
             error: 'Can only install ttf, otf, woff and woff2 fonts'
           }
         }
@@ -239,6 +248,7 @@ export const installFont = async (
         return {
           result: 'error',
           path: null,
+          fontName: null,
           error: `Could not determine file type of '${fullPath}'.`
         }
       }
@@ -246,14 +256,16 @@ export const installFont = async (
       return {
         result: 'error',
         path: null,
+        fontName: null,
         error: `File '${fullPath}' not found.`
       }
     }
   } catch (e) {
-    console.log(e)
+    console.error(e)
     return {
       result: 'error',
       path: null,
+      fontName: null,
       error: e.message
     }
   }
@@ -270,7 +282,7 @@ async function* walk(dir: string): AsyncGenerator<string> {
 export const installFontsFromDir = async (
   dirPath: string,
   config?: Partial<Config>
-) => {
+): Promise<Result[]> => {
   // merge configs
   const cfg: Config = { ...defaultConfig, ...config }
 
@@ -280,7 +292,13 @@ export const installFontsFromDir = async (
     throw new Error(`Input dirPath does not exist, or is not a directory`)
   }
 
-  const fontMap = new Map<string, { path: string; ext: ValidFontExt }>()
+  type FontData = {
+    path: string
+    ext: ValidFontExt
+    fontData: Font
+  }
+
+  const fontMap = new Map<string, FontData>()
 
   for await (const p of walk(fullDirPath)) {
     let ext = p.slice(p.lastIndexOf('.') + 1).toLowerCase()
@@ -301,7 +319,8 @@ export const installFontsFromDir = async (
         ) {
           fontMap.set(fontData.fullName, {
             path: p,
-            ext
+            ext,
+            fontData
           })
         }
       }
@@ -309,13 +328,12 @@ export const installFontsFromDir = async (
   }
 
   return Promise.all(
-    [...fontMap.entries()].map((entry) => {
-      const fontName = entry[0] as string
-      const { path } = entry[1] as { path: string; ext: ValidFontExt }
+    [...fontMap.values()].map((entry) => {
+      const { path, fontData } = entry
 
       return installFont(path, cfg).then((result) => ({
         ...result,
-        fontName
+        fontName: `${fontData.familyName} ${fontData.subfamilyName}`
       }))
     })
   ).then(async (results) => {
@@ -323,29 +341,32 @@ export const installFontsFromDir = async (
     const fontsAlreadyInstalled = []
     for (const result of results) {
       if (result.result === 'error') {
-        console.warn(
+        console.log(
           `'${result.fontName}' was not installed:\n  ${result.error}`
         )
       } else if (result.result === 'was_added') {
-        fontsInstalled.push(result.fontName)
+        fontsInstalled.push(result)
       } else {
-        fontsAlreadyInstalled.push(result.fontName)
+        fontsAlreadyInstalled.push(result)
       }
     }
 
     if (fontsInstalled.length > 0) {
       console.log(
-        `Fonts installed:\n${fontsInstalled
-          .sort()
-          .map((f) => `  ${f}`)
+        `Fonts installed:\n${[...fontsInstalled.values()]
+          .sort((a, b) => (a.fontName > b.fontName ? 1 : -1))
+          .map(({ fontName }) => `  ${fontName}`)
           .join('\n')}`
       )
     }
+
     if (fontsAlreadyInstalled.length > 0) {
       console.log(
-        `Fonts encountered that were previously installed:\n${fontsAlreadyInstalled
-          .sort()
-          .map((f) => `  ${f}`)
+        `Fonts encountered that were previously installed:\n${[
+          ...fontsAlreadyInstalled.values()
+        ]
+          .sort((a, b) => (a.fontName > b.fontName ? 1 : -1))
+          .map(({ fontName }) => `  ${fontName}`)
           .join('\n')}`
       )
     }
